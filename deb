@@ -1,0 +1,412 @@
+// get the depends of the dpkg-dev pkg locally
+
+Repo :
+sudo apt install dpkg-dev xz-utils --no-install-recommends
+sudo mkdir -p /opt/debian/
+dpkg-scanpackages --hash sha256 . > Packages
+gzip -k Packages
+xz -k Packages
+sudo mv ./*.deb /opt/debian/
+sudo mv ./Packages* /opt/debian
+
+sudo nano /etc/apt/sources.list :
+
+deb [trusted=yes] file:/opt/debian /
+
+sudo apt update
+sudo apt install my-[   ]
+
+--------------------------------------------------------------------
+
+sudo apt install binutils
+ar -x ./*.deb
+
+[Unit]
+After=mongod.service
+[Service]
+ExecStartPost=
+
+--------------------------------------------------------------------
+
+Node JS :
+
+sudo apt install xz-utils
+mkdir -p my-nodejs/usr/local/bin/
+mkdir my-nodejs/usr/local/nodejs/
+mv node-v18.12.1-linux-x64.tar.xz my-nodejs
+cd my-nodejs
+tar -xf node-v18.12.1-linux-x64.tar.xz
+cp -r node-v18.12.1-linux-x64/* usr/local/nodejs/
+rm node-v18.12.1-linux-x64.tar.xz
+rm -rf node-v18.12.1-linux-x64/
+cd usr/local/bin/
+ln -s ../nodejs/bin/node node
+ln -s ../nodejs/bin/npm npm
+ln -s ../nodejs/bin/corepack corepack
+ln -s ../nodejs/bin/npx npx
+cd ../../../
+mkdir DEBIAN
+nano DEBIAN/control :
+
+Package: my-nodejs
+Version: 18.12.1
+Architecture: amd64
+Maintainer: -
+Description: -
+
+cd ..
+dpkg-deb --build my-nodejs my-nodejs-18.12.1-amd64.deb
+rm -rf my-nodejs
+sudo apt install ./my-nodejs-18.12.1-amd64.deb
+
+==============================================================
+
+GoLang :
+
+sudo apt install xz-utils
+mkdir -p my-golang/usr/local/bin/
+mkdir my-golang/usr/local/golang/
+mv go1.19.4.linux-amd64.tar.gz my-golang
+cd my-golang
+tar -xf go1.19.4.linux-amd64.tar.gz
+cp -r go/* usr/local/golang/
+rm go1.19.4.linux-amd64.tar.gz
+rm -rf go/
+cd usr/local/bin/
+ln -s ../golang/bin/go go
+ln -s ../golang/bin/gofmt gofmt
+cd ../../../
+mkdir DEBIAN
+nano DEBIAN/control :
+
+Package: my-golang
+Version: 1.19.4
+Architecture: amd64
+Maintainer: -
+Description: -
+
+cd ..
+dpkg-deb --build my-golang my-golang-1.19.4-amd64.deb
+rm -rf my-golang
+sudo apt install ./my-golang-1.19.4-amd64.deb
+
+==============================================================
+
+MongoDB :
+
+sudo apt install gnupg
+curl -Lo server-6.0.asc https://www.mongodb.org/static/pgp/server-6.0.asc
+sudo apt-key add server-6.0.asc
+sudo nano /etc/apt/sources.list.d/mongodb-org-6.0.list :
+
+deb http://repo.mongodb.org/apt/debian bullseye/mongodb-org/6.0 main
+
+also https
+
+sudo apt update
+
+sudo apt install mongodb-org
+
+apt-get download mongodb-database-tools
+apt-get download mongodb-mongosh
+apt-get download mongodb-org-database-tools-extra
+apt-get download mongodb-org-database
+apt-get download mongodb-org-mongos
+apt-get download mongodb-org-server
+apt-get download mongodb-org-shell
+apt-get download mongodb-org-tools
+apt-get download mongodb-org
+
+sudo apt install xz-utils
+
+mkdir -p my-mongodb/DEBIAN
+
+nano my-mongodb/DEBIAN/control :
+
+Package: my-mongodb
+Version: 6.0.3
+Pre-Depends: mongodb-org
+Architecture: amd64
+Maintainer: -
+Description: -
+
+dpkg-deb --build my-mongodb my-mongodb-6.0.3-amd64.deb
+rm -rf my-mongodb
+sudo apt install ./my-mongodb-6.0.3-amd64.deb
+
+==============================================================
+
+Node JS API :
+
+sudo apt install xz-utils
+
+mkdir -p my-nodejs-api/usr/local/nodejs-api/
+
+nano my-nodejs-api/usr/local/nodejs-api/nodejs-api :
+
+const http = require( "http" );
+const RequestListener = function( Req , Res ) {
+    let Response = "OK!\n";
+    if( Req.method == "GET" ) {
+        Res.end( Response );
+    }
+};
+const Server = http.createServer( RequestListener );
+Server.listen( 80 , "127.0.0.1" );
+
+mkdir -p my-nodejs-api/lib/systemd/system/
+
+nano my-nodejs-api/lib/systemd/system/nodejs-api.service :
+
+[Service]
+Type=exec
+ExecStartPre=!systemctl start mongod
+ExecStart=!/usr/local/bin/node /usr/local/nodejs-api/nodejs-api
+ExecStopPost=!systemctl stop mongod
+[Install]
+RequiredBy=multi-user.target
+
+mkdir my-nodejs-api/DEBIAN
+nano my-nodejs-api/DEBIAN/control :
+
+Package: my-nodejs-api
+Version: 1.0.0
+Pre-Depends: my-nodejs , my-mongodb
+Architecture: amd64
+Maintainer: -
+Description: -
+
+dpkg-deb --build my-nodejs-api my-nodejs-api-v1.0.0-amd64.deb
+rm -rf my-nodejs-api
+sudo apt install my-nodejs-api
+
+sudo systemctl start nodejs-api
+
+======================================================
+
+CoreDNS :
+
+sudo apt install xz-utils
+
+mkdir -p my-coredns/usr/local/coredns/
+
+curl -Lo hosts https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+
+mv hosts my-coredns/usr/local/coredns/hosts.txt
+
+tar -xf coredns_1.10.0_linux_amd64.tgz
+
+mv coredns my-coredns/usr/local/coredns/
+
+rm coredns_1.10.0_linux_amd64.tgz
+
+nano my-coredns/usr/local/coredns/Corefile :
+
+dns://.:53 {
+    bind 127.0.0.1
+    hosts hosts.txt {
+        fallthrough
+    }
+    forward . tls://1.1.1.1 tls://1.0.0.1 {
+        tls_servername cloudflare-dns.com
+    }
+    cache 300
+}
+
+https://.:853 {
+    bind 127.0.0.1
+    hosts hosts.txt {
+        fallthrough
+    }
+    forward . tls://1.1.1.1 tls://1.0.0.1 {
+        tls_servername cloudflare-dns.com
+    }
+    cache 300
+}
+
+nano my-coredns/usr/local/coredns/DNATUP.sh :
+
+systemctl start nftables
+nft add table ip NATtable
+nft add chain ip NATtable NATchain { type nat hook output priority 0 \; }
+nft add rule ip NATtable NATchain udp dport 53 dnat to 127.0.0.1
+nft add rule ip NATtable NATchain tcp dport 53 dnat to 127.0.0.1
+
+nano my-coredns/usr/local/coredns/DNATOFF.sh :
+
+nft delete table ip NATtable
+systemctl stop nftables
+
+mkdir -p my-coredns/lib/systemd/system/
+
+nano my-coredns/lib/systemd/system/coredns.service :
+
+[Service]
+Type=exec
+ExecStartPre=!/usr/bin/bash /usr/local/coredns/DNATUP.sh
+ExecStart=!/usr/local/coredns/coredns
+ExecStopPost=!/usr/bin/bash /usr/local/coredns/DNATOFF.sh
+[Install]
+RequiredBy=multi-user.target
+
+mkdir my-coredns/DEBIAN
+
+nano my-coredns/DEBIAN/control :
+
+Package: my-coredns
+Version: 1.10.0
+Pre-Depends: nftables
+Architecture: amd64
+Maintainer: -
+Description: -
+
+dpkg-deb --build my-coredns my-coredns-v1.10.0-amd64.deb
+rm -rf my-coredns
+sudo apt install my-coredns
+
+sudo systemctl start coredns
+
+=========================================
+
+Android :
+
+sudo apt install xz-utils unzip
+mkdir -p my-android/usr/local/bin/
+mkdir -p my-android/usr/local/android/tools/
+
+tar -xf flutter_linux_3.3.10-stable.tar.xz -C my-android/usr/local/android
+rm flutter_linux_3.3.10-stable.tar.xz
+
+unzip -d my-android/usr/local/android gradle-7.6-bin.zip
+rm gradle-7.6-bin.zip
+
+unzip commandlinetools-linux-9123335_latest.zip
+cp -r cmdline-tools/* my-android/usr/local/android/tools/
+rm commandlinetools-linux-9123335_latest.zip
+rm -rf cmdline-tools
+
+unzip -d my-android/usr/local/android emulator-linux_x64-9278971.zip
+rm emulator-linux_x64-9278971.zip
+
+cd my-android/usr/local/bin/
+
+ln -s ../android/flutter/bin/dart dart
+ln -s ../android/flutter/bin/flutter flutter
+
+ln -s ../android/gradle-7.6/bin/gradle gradle
+
+ln -s ../android/tools/bin/apkanalyzer apkanalyzer
+ln -s ../android/tools/bin/avdmanager avdmanager
+ln -s ../android/tools/bin/lint lint
+ln -s ../android/tools/bin/profgen profgen
+ln -s ../android/tools/bin/retrace retrace
+ln -s ../android/tools/bin/screenshot2 screenshot2
+ln -s ../android/tools/bin/sdkmanager sdkmanager
+
+ln -s ../android/emulator/crashpad_handler crashpad_handler
+ln -s ../android/emulator/emulator emulator
+ln -s ../android/emulator/emulator-check emulator-check
+ln -s ../android/emulator/goldfish-webrtc-bridge goldfish-webrtc-bridge
+ln -s ../android/emulator/mksdcard mksdcard
+ln -s ../android/emulator/nimble_bridge nimble_bridge
+ln -s ../android/emulator/qemu-img qemu-img
+ln -s ../android/emulator/qsn qsn
+
+cd ../../../../
+
+mkdir my-android/DEBIAN
+nano my-android/DEBIAN/control :
+
+Package: my-android
+Version: 1.0.0
+Pre-Depends: default-jdk , curl , git , xz-utils , zip , unzip
+Architecture: amd64
+Maintainer: -
+Description: -
+
+// code
+
+nano my-android/DEBIAN/postinst :
+
+#!/usr/bin/bash
+/usr/local/bin/dart --disable-analytics > /dev/null 2>&1
+/usr/local/bin/flutter config --no-analytics > /dev/null 2>&1
+/usr/local/bin/flutter config --android-sdk /usr/local/android > /dev/null 2>&1
+
+chmod +x my-android/DEBIAN/postinst
+
+dpkg-deb --build my-android my-android-1.0.0-amd64.deb
+rm -rf my-android
+sudo apt install ./my-android-1.0.0-amd64.deb
+
+|||||||||||||||||||||||||||
+
+dart , flutter vscode extensions 
+
+echo "export ANDROID_HOME=/usr/local/android" >> ~/.bashrc
+source ~/.bashrc
+
+emulator @[ NAME ]
+
+flutter doctor
+flutter precache
+
+===========================================
+
+UFW :
+
+sudo apt install xz-utils
+
+mkdir -p my-firewall/DEBIAN
+
+nano my-firewall/DEBIAN/control :
+
+Package: my-firewall
+Version: 1.0.0
+Pre-Depends: ufw
+Architecture: amd64
+Maintainer: -
+Description: -
+
+nano my-firewall/DEBIAN/postinst :
+
+#!/usr/bin/bash
+ufw --force reset
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 22
+ufw allow 443
+ufw --force enable
+
+chmod +x my-firewall/DEBIAN/postinst
+
+dpkg-deb --build my-firewall my-firewall-1.0.0-amd64.deb
+rm -rf my-firewall
+sudo apt install ./my-firewall-1.0.0-amd64.deb
+
+---------------------------------------------
+
+route893@outlook.com
+Drama8#!?
+
+https://github.com/route893
+
+su root
+apt update
+apt install sudo
+[ sudo ] adduser yakuza ( Drama8#!? )
+[ sudo ] adduser yakuza sudo
+[ sudo ] dpkg-reconfigure tzdata
+[ sudo ] hostnamectl set-hostname [ route893.com ]
+[ sudo ] nano /etc/hosts : [ 1.2.3.4 ] route893.com
+[ sudo ] rm /etc/ssh/ssh_host_*
+[ sudo ] dpkg-reconfigure openssh-server
+[ sudo ] nano /etc/apt/sources.list
+[ sudo ] reboot
+
+getent passwd {1000..60000}
+userdel -r [ ]
+
+
+
+
