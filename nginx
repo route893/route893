@@ -1,0 +1,76 @@
+https://www.digitalocean.com/community/tutorials/how-to-install-wordpress-with-lemp-nginx-mariadb-and-php-on-debian-10
+https://www.digitalocean.com/community/tutorials/how-to-install-linux-nginx-mariadb-php-lemp-stack-on-debian-10
+
+sudo apt update
+sudo apt install nginx mariadb-server php-fpm php-mysql php-curl php-gd php-intl php-mbstring php-soap php-xml php-xmlrpc php-zip
+sudo systemctl restart php7.4-fpm.service
+
+sudo mysql_secure_installation [ ENTER , N , N , Y , Y , Y , ... ]
+
+sudo mariadb
+CREATE DATABASE wordpress DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+GRANT ALL ON wordpress.* TO 'sajjad'@'localhost' IDENTIFIED BY 'drama';
+FLUSH PRIVILEGES;
+EXIT;
+
+mkdir /home/sajjad/wordpress/
+mkdir /home/sajjad/ssl/
+
+
+cd ~/ssl
+openssl genrsa -out www.key 2048
+openssl req -x509 -days 3650 -subj "/CN=www.local" -addext "subjectAltName=DNS:www.local" -key www.key -out www.crt
+
+sudo nano /etc/nginx/sites-available/default :
+
+server {
+    listen 443 ssl;
+    root /home/sajjad/wordpress;
+    index index.php index.html;
+    server_name www.local;
+    ssl_certificate /home/sajjad/ssl/www.crt;
+    ssl_certificate_key /home/sajjad/ssl/www.key;
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+    }
+}
+
+sudo systemctl reload nginx
+
+mkdir ~/sources
+cd ~/sources
+https://wordpress.org/latest.tar.gz
+tar -xf latest.tar.gz
+mv wordpress/wp-config-sample.php wordpress/wp-config.php
+cp -a wordpress/. /home/sajjad/wordpress/
+sudo chown -R www-data:www-data /home/sajjad/wordpress/
+
+sudo nano /home/sajjad/wordpress/wp-config.php :
+
+define('DB_NAME', 'wordpress');
+define('DB_USER', 'sajjad');
+define('DB_PASSWORD', 'drama');
+define('FS_METHOD', 'direct');
+
+( curl -s https://api.wordpress.org/secret-key/1.1/salt/ )
+
+define('AUTH_KEY',         '`;EpUn_6:!vB*vvu8jI3bqCKC6I9 5w^VK/q5EzPC6,TcI-Zh6.FPiH;s`:Aa]Gu');
+define('SECURE_AUTH_KEY',  'N`D;E_)kuq<7#4])|wAPP7<wB<We4sIdCDc.O<1uldRZP^kjFokb}wM[vK;NpKWW');
+define('LOGGED_IN_KEY',    '5)U!awbg5ZJyANh_v|v#Bi`-i`8Hfe5S&|g Fe-6.e;lOt!)-~A`z>`T5-PB}WsM');
+define('NONCE_KEY',        'k7i*dH/&#=-^~NC>z{Dsj%AbQ<zAu#+]%-a]mV!(w7xmi,i@8$/Whp-)XLskuVpB');
+define('AUTH_SALT',        '@@{ua,+;7-cp;(+iPa>_jKm-IBIFj)<R$pLZf}=Nm-9|g_{h4Y4ol2LK6uE22W=+');
+define('SECURE_AUTH_SALT', '~&,zW!ibO2Mf50x=-/-`gn]_-ZEP(vX+2ShdU4VO%o-[B2N,;;#Ru)JI}>BKta)y');
+define('LOGGED_IN_SALT',   '}Px/cpk-R<(n2dc@;iu[lkzrTQ/om~-BIxd>:|y Ky)nehk/@4:bqF}fld*<v@|:');
+define('NONCE_SALT',       'Qjfm#-mw6}aq{2g;ldFK`j_ @! u~q]TAEd0e,hrw0N~Art+*w=tNR0+{; Gh(fq');
+
+https://192.168.43.127
+
+
+
+location /download { }
+location /api { }
+location /vless { }
+location /dns
+
+
