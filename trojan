@@ -1,0 +1,128 @@
+Standard :
+
+openssl genrsa -out ca.key 2048
+
+openssl req -x509 -days 3650 -subj "/CN=VPNTest" -key ca.key -out ca.crt
+
+openssl genrsa -out srv1.key 2048
+
+openssl req -new -key srv1.key -subj "/CN=srv1.local" -addext "subjectAltName=DNS:srv1.local" -out srv1.csr
+
+openssl x509 -req -in srv1.csr -days 3650 -signkey ca.key -out srv1.crt
+
+Trojan Test :
+
+openssl genrsa -out trojan.key 2048
+
+openssl req -x509 -days 3650 -subj "/CN=trojan.local" -addext "subjectAltName=DNS:trojan.local" -key trojan.key -out trojan.crt
+
+
+server {
+	listen 127.0.0.1:80;
+	server_name srv1.local;
+	root /usr/share/nginx/html;
+	index index.html;
+}
+
+
+server {
+	listen 443 ssl;
+	server_name srv1.local;
+	root /usr/share/nginx/html;
+	index index.html;
+	ssl_certificate /home/sajjad/trojan/srv1.crt;
+	ssl_certificate_key /home/sajjad/trojan/srv1.key;
+}
+
+
+sudo apt install iperf3
+iperf3 --help
+iperf3 --server 192.168.43.127
+iperf3 --client 192.168.43.127 --time 5 --reverse --json
+
+https://github.com/coredns/coredns/releases/download/v1.10.0/coredns_1.10.0_linux_amd64.tgz
+https://github.com/ogham/dog
+https://dns.lookup.dog/
+https://github.com/ogham/dog/releases/download/v0.1.0/dog-v0.1.0-x86_64-unknown-linux-gnu.zip
+
+sudo apt install dnsutils
+
+https://github.com/natesales/q/releases/download/v0.8.4/q_0.8.4_linux_amd64.tar.gz
+
+https://github.com/StevenBlack/hosts ( Unified hosts = ( adware + malware ) ) 
+https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+
+=======================================
+=======================================
+
+mv hosts Hosts-2022-12-16.txt
+
+nano Corefile :
+
+dns://example.local:53 {
+    bind 127.0.0.1
+    hosts {
+        192.168.43.2 example.local
+    }
+}
+dns://.:53 {
+    bind 127.0.0.1
+    hosts Hosts-2022-12-16.txt {
+        fallthrough
+    }
+    forward . 8.8.8.8:53
+    cache 300
+}
+
+./sudo coredns
+
+dig A example.local @192.168.43.127
+dig A 010sec.com @127.0.0.1
+
+=======================================
+=======================================
+
+plain dns hijack :
+
+dns://.:53 {
+    bind 127.0.0.1
+    hosts Hosts-2022-12-16.txt {
+        fallthrough
+    }
+    forward . tls://1.1.1.1 tls://1.0.0.1 {
+        tls_servername cloudflare-dns.com
+    }
+    cache 300
+}
+
+doh server behind nginx :
+nginx terminates tls and returns http2 on 127.0.0.1:853 from /doh urls
+
+https://.:853 {
+    bind 127.0.0.1
+    hosts Hosts-2022-12-16.txt {
+        fallthrough
+    }
+    forward . tls://1.1.1.1 tls://1.0.0.1 {
+        tls_servername cloudflare-dns.com
+    }
+    cache 300
+}
+
+\\ nftables
+
+sudo systemctl start nftables
+
+sudo nft add table ip NATtable
+
+sudo nft add chain ip NATtable NATchain {type nat hook output priority 0 \;}
+
+sudo nft add rule ip NATtable NATchain udp dport 53 dnat to 127.0.0.1
+
+sudo nft add rule ip NATtable NATchain tcp dport 53 dnat to 127.0.0.1
+
+
+sudo nft delete table ip NATtable 
+
+sudo systemctl stop nftables
+
