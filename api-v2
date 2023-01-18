@@ -1,0 +1,29 @@
+const http = require( "node:http" );
+const { createHash , } = require( "node:crypto" );
+const { createDecipheriv , } = require( "node:crypto" );
+const { Buffer } = require( "node:buffer" );
+
+const Sha256 = createHash( "sha256" );
+Sha256.update( "DRAMA" );
+const KEY = Sha256.digest();
+
+const RequestListener = function( Req , Res ) {
+    if( Req.method == "GET" ) {
+        const Request = Req.url.slice( 1 ) ;
+        const RequestBuffer = Buffer.from( Request , "base64url" );
+        const NONCE = Buffer.allocUnsafe( 12 );
+        const TAG = Buffer.allocUnsafe( 16 );
+        const EncryptedData = Buffer.alloc( RequestBuffer.length - 28 , 0 );
+        RequestBuffer.copy( NONCE , 0 , 0 , 12 );
+        RequestBuffer.copy( TAG , 0 , RequestBuffer.length - 16 );
+        RequestBuffer.copy( EncryptedData , 0 , 12 );
+        const AESGCM256 = createDecipheriv( "aes-256-gcm" , KEY , NONCE );
+        AESGCM256.setAuthTag( TAG );
+        let Data = AESGCM256.update( EncryptedData , null , "utf8" );
+        Data = Data + AESGCM256.final( "utf8" );
+        console.log( Data )
+    }
+};
+
+const API = http.createServer( RequestListener );
+API.listen( 80 , "127.0.0.1" );
