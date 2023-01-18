@@ -1,0 +1,51 @@
+package main
+
+import "crypto/sha256"
+import "crypto/rand"
+import "crypto/aes"
+import "crypto/cipher"
+import "encoding/hex"
+import "encoding/base64"
+import "encoding/json"
+import "net/http"
+import "strings"
+// import "io"
+// import "fmt"
+
+func main() {
+
+    ApiURLPrefix := "http://127.0.0.1/"
+
+    SECRET := []byte( "DRAMA" )
+    SECRETHASH := sha256.Sum256( SECRET )
+    KEY := SECRETHASH[ : ]
+
+    IdBuffer := make( []byte , 2 )
+    _ , _ = rand.Read( IdBuffer )
+    Id := strings.ToUpper( hex.EncodeToString( IdBuffer ) )
+    Email := "sajjad@gmail.com"
+    Token := "AAABBBCCCDDD"
+
+    type SIGNUP struct {
+        EMAIL string
+        TOKEN string
+        ID    string
+    }
+
+    RequestObj := SIGNUP{ Email , Token , Id }
+    RequestJson , _ := json.Marshal( RequestObj )
+
+    AES , _ := aes.NewCipher( KEY )
+    AESGCM256 , _ := cipher.NewGCM( AES )
+    NONCE := make( []byte , AESGCM256.NonceSize() )
+    _ , _ = rand.Read( NONCE )
+    RequestEncrypted := AESGCM256.Seal( NONCE , NONCE , RequestJson , nil )
+    RequestURL := base64.RawURLEncoding.EncodeToString( RequestEncrypted )
+
+    Response , _ := http.Get( ApiURLPrefix + RequestURL )
+    // ResponseBody , _ := io.ReadAll( Response.Body )
+    defer Response.Body.Close()
+
+    // fmt.Printf( "%s" , ResponseBody )
+
+}
